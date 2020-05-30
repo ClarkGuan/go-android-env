@@ -2,6 +2,15 @@
 
 辅助设置 Golang 的 Android NDK 环境变量，简化 Android 交叉编译和运行的流程。
 
+安装后会生成四个可执行文件，分别对应四种交叉编译环境：
+
+* 386：32 位 x86 设备或模拟器
+* amd64：64 位 amd64 设备或模拟器
+* arm：32 位 armv7a 设备或模拟器
+* arm64：64 位 armv8a 设备或模拟器
+
+它们会安装到 $GOBIN 或 $GOPATN/bin 目录下。请将上述目录添加到 $PATH 中以便运行。
+
 ## 依赖
 
 * Golang 环境并设置 $GOPATH 环境变量
