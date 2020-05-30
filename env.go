@@ -83,7 +83,6 @@ var ndk = ndkConfig{
 		toolPrefix:  "aarch64-linux-android",
 		clangPrefix: "aarch64-linux-android",
 	},
-
 	"386": {
 		arch:        "x86",
 		abi:         "x86",
@@ -164,6 +163,12 @@ func envInit() error {
 }
 
 func Main(s string) {
+	err := envInit()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "缺少参数")
 		os.Exit(1)
@@ -171,18 +176,11 @@ func Main(s string) {
 
 	cmd := exec.Command(os.Args[1], os.Args[2:]...)
 	cmd.Env = append(cmd.Env, os.Environ()...)
-	cmd.Env = append(cmd.Env, androidEnv["386"]...)
+	cmd.Env = append(cmd.Env, androidEnv[s]...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-	}
-}
-
-func init() {
-	err := envInit()
-	if err != nil {
-		panic(err)
 	}
 }
