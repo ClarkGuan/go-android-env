@@ -1,9 +1,12 @@
 # go-android-env
 
+辅助设置 Golang 的 Android NDK 环境变量，简化 Android 交叉编译和运行的流程。
+
 ## 依赖
 
+* Golang 环境并设置 $GOPATH 环境变量
 * arun 工具（https://github.com/ClarkGuan/arun）
-* NDK
+* NDK 并设置 $NDK 环境变量
 * Android 模拟器或真实设备
 
 ## 安装
