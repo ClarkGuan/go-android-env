@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 )
 
 const minAndroidAPI = 15
@@ -99,6 +101,37 @@ var ndk = ndkConfig{
 	},
 }
 
+func compareVersion(s1, s2 string) int {
+	if s1 == s2 {
+		return 0
+	}
+
+	var pre1, pre2 string
+	var post1, post2 string
+	if index1 := strings.Index(s1, "."); index1 == -1 {
+		pre1 = s1
+	} else {
+		pre1 = s1[:index1]
+		post1 = s1[index1+1:]
+	}
+	if index2 := strings.Index(s2, "."); index2 == -1 {
+		pre2 = s2
+	} else {
+		pre2 = s2[:index2]
+		post2 = s2[index2+1:]
+	}
+	var i1, i2 int
+	i1, _ = strconv.Atoi(pre1)
+	i2, _ = strconv.Atoi(pre2)
+	if i1 == i2 {
+		return compareVersion(post1, post2)
+	} else if i1 > i2 {
+		return 1
+	} else {
+		return -1
+	}
+}
+
 func ndkRoot() (string, error) {
 	androidHome := os.Getenv("ANDROID_HOME")
 	if androidHome != "" {
@@ -107,9 +140,24 @@ func ndkRoot() (string, error) {
 		if err == nil {
 			return ndkRoot, nil
 		}
+
+		ndkRoot = filepath.Join(androidHome, "ndk")
+		dir, _ := os.Open(ndkRoot)
+		if dir != nil {
+			infos, _ := dir.Readdir(-1)
+			var max string
+			for _, info := range infos {
+				if compareVersion(max, info.Name()) < 0 {
+					max = info.Name()
+				}
+			}
+			if len(max) > 0 {
+				return filepath.Join(ndkRoot, max), nil
+			}
+		}
 	}
 
-	ndkPaths := []string{"NDK", "ANDROID_NDK_HOME"}
+	ndkPaths := []string{"NDK", "NDK_HOME", "NDK_ROOT", "ANDROID_NDK_HOME"}
 	ndkRoot := ""
 	for _, path := range ndkPaths {
 		ndkRoot = os.Getenv(path)
@@ -121,7 +169,7 @@ func ndkRoot() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no Android NDK found in $ANDROID_HOME/ndk-bundle nor in $ANDROID_NDK_HOME")
+	return "", fmt.Errorf("no Android NDK found in $ANDROID_HOME/ndk-bundle, $ANDROID_HOME/ndk, $NDK_HOME, $NDK_ROOT nor in $ANDROID_NDK_HOME")
 }
 
 func envInit() error {
