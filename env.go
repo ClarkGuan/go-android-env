@@ -206,6 +206,8 @@ func envInit() error {
 				androidEnv[arch] = append(androidEnv[arch], "GOARM=7")
 			}
 		}
+	} else {
+		return err
 	}
 	return nil
 }
@@ -219,6 +221,7 @@ func Main(s string) {
 
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "缺少参数")
+		fmt.Fprintln(os.Stderr, "环境变量:", strings.Join(androidEnv[s], ", "))
 		os.Exit(1)
 	}
 
