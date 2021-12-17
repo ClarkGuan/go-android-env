@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/blang/semver"
 )
 
 const minAndroidAPI = 15
@@ -101,6 +103,18 @@ var ndk = ndkConfig{
 	},
 }
 
+func compareVersion2(s1, s2 string) int {
+	version1, err := semver.New(s1)
+	if err != nil {
+		return compareVersion(s1, s2)
+	}
+	version2, err := semver.New(s2)
+	if err != nil {
+		return compareVersion(s1, s2)
+	}
+	return version1.Compare(version2)
+}
+
 func compareVersion(s1, s2 string) int {
 	if s1 == s2 {
 		return 0
@@ -147,7 +161,7 @@ func ndkRoot() (string, error) {
 			infos, _ := dir.Readdir(-1)
 			var max string
 			for _, info := range infos {
-				if compareVersion(max, info.Name()) < 0 {
+				if compareVersion2(max, info.Name()) < 0 {
 					max = info.Name()
 				}
 			}
@@ -176,9 +190,7 @@ func envInit() error {
 	// Setup the cross-compiler environments.
 	if ndkRoot, err := ndkRoot(); err == nil {
 		androidEnv = make(map[string][]string)
-		if buildAndroidAPI < minAndroidAPI {
-			return fmt.Errorf("go-android-env requires Android API level >= %d", minAndroidAPI)
-		}
+
 		for arch, toolchain := range ndk {
 			clang := toolchain.Path(ndkRoot, "clang")
 			clangpp := toolchain.Path(ndkRoot, "clang++")
@@ -192,7 +204,7 @@ func envInit() error {
 			for _, tool := range tools {
 				_, err = os.Stat(tool)
 				if err != nil {
-					return fmt.Errorf("No compiler for %s was found in the NDK (tried %s). Make sure your NDK version is >= r19c. Use `sdkmanager --update` to update it.", arch, tool)
+					return fmt.Errorf("no compiler for %s was found in the NDK (tried %s). Make sure your NDK version is >= r19c. Use `sdkmanager --update` to update it", arch, tool)
 				}
 			}
 			androidEnv[arch] = []string{
