@@ -1,7 +1,9 @@
 package env
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,26 +14,13 @@ import (
 	"github.com/blang/semver"
 )
 
-const minAndroidAPI = 15
-
-// TODO 可以手动修改？
-var buildAndroidAPI = minAndroidAPI
-
 var androidEnv map[string][]string // android arch -> []string
 
 type ndkToolchain struct {
 	arch        string
 	abi         string
-	minAPI      int
 	toolPrefix  string
 	clangPrefix string
-}
-
-func (tc *ndkToolchain) ClangPrefix() string {
-	if buildAndroidAPI < tc.minAPI {
-		return fmt.Sprintf("%s%d", tc.clangPrefix, tc.minAPI)
-	}
-	return fmt.Sprintf("%s%d", tc.clangPrefix, buildAndroidAPI)
 }
 
 func archNDK() string {
@@ -52,14 +41,55 @@ func archNDK() string {
 }
 
 func (tc *ndkToolchain) Path(ndkRoot, toolName string) string {
+	binPath := tc.bin(ndkRoot)
 	var pref string
 	switch toolName {
 	case "clang", "clang++":
-		pref = tc.ClangPrefix()
+		if path, err := guessPath(binPath, tc.clangPrefix, toolName); err != nil {
+			log.Fatalln(err)
+		} else {
+			return path
+		}
 	default:
 		pref = tc.toolPrefix
 	}
-	return filepath.Join(ndkRoot, "toolchains", "llvm", "prebuilt", archNDK(), "bin", pref+"-"+toolName)
+	return filepath.Join(binPath, pref+"-"+toolName)
+}
+
+func (tc *ndkToolchain) bin(ndkRoot string) string {
+	return filepath.Join(ndkRoot, "toolchains", "llvm", "prebuilt", archNDK(), "bin")
+}
+
+func guessPath(dir, prefix, toolName string) (string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+	min := 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if strings.HasPrefix(name, prefix) && strings.Contains(name, toolName) {
+			index := strings.IndexByte(name[len(prefix):], '-')
+			if index == -1 {
+				return "", fmt.Errorf("can't find '-' : %s", name)
+			}
+			apiLevel, err := strconv.Atoi(name[len(prefix) : len(prefix)+index])
+			if err != nil {
+				return "", err
+			}
+			if min > apiLevel || min == 0 {
+				min = apiLevel
+			}
+		}
+	}
+	if min == 0 {
+		return "", errors.New("can't find apiLevel")
+	}
+	return filepath.Join(dir, fmt.Sprintf("%s%d-%s", prefix, min, toolName)), nil
 }
 
 type ndkConfig map[string]ndkToolchain // map: GOOS->androidConfig.
@@ -76,28 +106,24 @@ var ndk = ndkConfig{
 	"arm": {
 		arch:        "arm",
 		abi:         "armeabi-v7a",
-		minAPI:      19,
 		toolPrefix:  "arm-linux-androideabi",
 		clangPrefix: "armv7a-linux-androideabi",
 	},
 	"arm64": {
 		arch:        "arm64",
 		abi:         "arm64-v8a",
-		minAPI:      21,
 		toolPrefix:  "aarch64-linux-android",
 		clangPrefix: "aarch64-linux-android",
 	},
 	"386": {
 		arch:        "x86",
 		abi:         "x86",
-		minAPI:      19,
 		toolPrefix:  "i686-linux-android",
 		clangPrefix: "i686-linux-android",
 	},
 	"amd64": {
 		arch:        "x86_64",
 		abi:         "x86_64",
-		minAPI:      21,
 		toolPrefix:  "x86_64-linux-android",
 		clangPrefix: "x86_64-linux-android",
 	},
@@ -148,16 +174,14 @@ func compareVersion(s1, s2 string) int {
 
 func ndkRoot() (string, error) {
 	androidHome := os.Getenv("ANDROID_HOME")
-	if androidHome != "" {
+	if len(androidHome) > 0 {
 		ndkRoot := filepath.Join(androidHome, "ndk-bundle")
-		_, err := os.Stat(ndkRoot)
-		if err == nil {
+		if _, err := os.Stat(ndkRoot); err == nil {
 			return ndkRoot, nil
 		}
 
 		ndkRoot = filepath.Join(androidHome, "ndk")
-		dir, _ := os.Open(ndkRoot)
-		if dir != nil {
+		if dir, _ := os.Open(ndkRoot); dir != nil {
 			infos, _ := dir.Readdir(-1)
 			var max string
 			for _, info := range infos {
@@ -175,9 +199,8 @@ func ndkRoot() (string, error) {
 	ndkRoot := ""
 	for _, path := range ndkPaths {
 		ndkRoot = os.Getenv(path)
-		if ndkRoot != "" {
-			_, err := os.Stat(ndkRoot)
-			if err == nil {
+		if len(ndkRoot) > 0 {
+			if _, err := os.Stat(ndkRoot); err == nil {
 				return ndkRoot, nil
 			}
 		}
