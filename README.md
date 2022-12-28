@@ -26,6 +26,13 @@ cd go-android-env
 ./build.sh
 ```
 
+或
+
+```bash
+go install -x github.com/ClarkGuan/go-android-env/...@latest
+```
+
+
 ## 使用
 
 ### 运行 go run
