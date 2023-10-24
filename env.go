@@ -26,6 +26,8 @@ type ndkToolchain struct {
 func archNDK() string {
 	if runtime.GOOS == "windows" && runtime.GOARCH == "386" {
 		return "windows"
+	} else if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		return runtime.GOOS + "-" + "x86_64"
 	} else {
 		var arch string
 		switch runtime.GOARCH {
