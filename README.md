@@ -9,13 +9,13 @@
 * arm：32 位 armv7a 设备或模拟器
 * arm64：64 位 armv8a 设备或模拟器
 
-它们会安装到 $GOBIN 或 $GOPATN/bin 目录下。请将上述目录添加到 $PATH 中以便运行。
+它们会安装到 `$GOBIN` 或 `$GOPATN/bin` 目录下。请将上述目录添加到 `$PATH` 中以便系统定位和运行它们。
 
 ## 依赖
 
 * Golang 环境并设置 $GOPATH 环境变量
 * arun 工具（ https://github.com/ClarkGuan/arun ）
-* NDK 并设置 $NDK 环境变量
+* NDK 并设置 `$NDK` 环境变量
 * Android 模拟器或真实设备
 
 ## 安装
@@ -133,3 +133,101 @@ prepare to push /var/folders/n5/26_m50tn4_j2n3gmvt19300h0000gn/T/go-build1993240
 FAIL
 [程序执行返回错误码(1)]
 ```
+
+### 加入 NDK 头文件和库文件的定位方法
+
+我们经常需要使用 NDK 的一些头文件，比如 `jni.h`、`EGL/egl.h`、`GLES3/gl3.h` 等等。而它们的定位并不是一件容易的事，通过 `gdk` 工具的加入可以帮助我们简化这一过程。我们以调用 NDK 函数输出日志到 logcat 中为例：
+
+```go
+package main
+
+//
+// #cgo LDFLAGS: -llog
+//
+// #include <android/log.h>
+// #include <stdlib.h>
+//
+import "C"
+
+import (
+	"fmt"
+	"unsafe"
+)
+
+type LogPriority int
+
+const (
+	ANDROID_LOG_UNKNOWN LogPriority = iota
+	ANDROID_LOG_DEFAULT
+	ANDROID_LOG_VERBOSE
+	ANDROID_LOG_DEBUG
+	ANDROID_LOG_INFO
+	ANDROID_LOG_WARN
+	ANDROID_LOG_ERROR
+	ANDROID_LOG_FATAL
+	ANDROID_LOG_SILENT
+)
+
+func write(prio LogPriority, tag, msg string) {
+	ctag := C.CString(tag)
+	cmsg := C.CString(msg)
+	C.__android_log_write(C.int(prio), ctag, cmsg)
+	C.free(unsafe.Pointer(ctag))
+	C.free(unsafe.Pointer(cmsg))
+}
+
+func LogV(tag, format string, a ...any) {
+	write(ANDROID_LOG_VERBOSE, tag, fmt.Sprintf(format, a...))
+}
+
+func LogD(tag, format string, a ...any) {
+	write(ANDROID_LOG_DEBUG, tag, fmt.Sprintf(format, a...))
+}
+
+func LogI(tag, format string, a ...any) {
+	write(ANDROID_LOG_INFO, tag, fmt.Sprintf(format, a...))
+}
+
+func LogW(tag, format string, a ...any) {
+	write(ANDROID_LOG_WARN, tag, fmt.Sprintf(format, a...))
+}
+
+func LogE(tag, format string, a ...any) {
+	write(ANDROID_LOG_ERROR, tag, fmt.Sprintf(format, a...))
+}
+
+func main() {
+	LogV("clark", "hello from verbose logs")
+	LogD("clark", "hello from debug logs")
+	LogI("clark", "hello from info logs")
+	LogW("clark", "hello from warning logs")
+	LogE("clark", "hello from error logs")
+}
+```
+
+我们打开 terminal 并运行：
+
+```shell
+> adb logcat -s clark
+```
+
+然后再打开另一个 terminal 编译我们的程序并运行：
+
+```shell
+> arm64 gdk go run -exec=arun .   
+============================
+[exit status:(0)]
+    0m00.04s real     0m00.01s user     0m00.03s system
+```
+
+然后在第一个 terminal 窗口会看到输出：
+
+```shell
+10-25 15:58:22.938 12362 12362 V clark   : hello from verbose logs
+10-25 15:58:22.939 12362 12362 D clark   : hello from debug logs
+10-25 15:58:22.939 12362 12362 I clark   : hello from info logs
+10-25 15:58:22.939 12362 12362 W clark   : hello from warning logs
+10-25 15:58:22.939 12362 12362 E clark   : hello from error logs
+```
+
+我们只需要添加连接选项 `#cgo LDFLAGS: -llog` 而无须考虑头文件和库文件在文件系统中的具体位置在哪里。
