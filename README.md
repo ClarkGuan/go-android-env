@@ -136,7 +136,7 @@ FAIL
 
 ### 加入 NDK 头文件和库文件的定位方法
 
-我们经常需要使用 NDK 的一些头文件，比如 `jni.h`、`EGL/egl.h`、`GLES3/gl3.h` 等等。而它们的定位并不是一件容易的事，通过 `gdk` 工具的加入可以帮助我们简化这一过程。我们以调用 NDK 函数输出日志到 logcat 中为例：
+我们经常需要使用 NDK 的一些头文件，比如 `jni.h`、`EGL/egl.h`、`GLES3/gl3.h` 等等。而它们的定位并不是一件容易的事，通过 `pos` 工具的加入可以帮助我们简化这一过程。我们以调用 NDK 函数输出日志到 logcat 中为例：
 
 ```go
 package main
@@ -214,7 +214,7 @@ func main() {
 然后再打开另一个 terminal 编译我们的程序并运行：
 
 ```shell
-> arm64 gdk go run -exec=arun .   
+> arm64 pos go run -exec=arun .   
 ============================
 [exit status:(0)]
     0m00.04s real     0m00.01s user     0m00.03s system
@@ -232,10 +232,10 @@ func main() {
 
 我们只需要添加连接选项 `#cgo LDFLAGS: -llog` 而无须考虑头文件和库文件在文件系统中的具体位置在哪里。
 
-> gdk 具体使用方法：
+> pos 具体使用方法：
 > 
-> `[386|amd64|arm|arm64] [gdk [-level <android API level>]] go ...`
+> `[386|amd64|arm|arm64] [pos [-level <android API level>]] go ...`
 > 
-> - 其中 `gdk` 必须出现在 `386|amd64|arm|arm64` 它们任一个之后，其他 `go` 命令之前
+> - 其中 `pos` 必须出现在 `386|amd64|arm|arm64` 它们任一个之后，其他 `go` 命令之前
 > - 可以使用 `-level <android API level>` 指定具体的 API level，默认为 21
 

@@ -14,7 +14,7 @@ func main() {
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
-		fmt.Fprintf(os.Stderr, "缺少参数，gdk 不能自己运行\n")
+		fmt.Fprintf(os.Stderr, "缺少参数，pos 不能自己运行\n")
 		os.Exit(1)
 	}
 
