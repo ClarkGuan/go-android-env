@@ -62,6 +62,15 @@ func (tc *ndkToolchain) bin(ndkRoot string) string {
 	return filepath.Join(ndkRoot, "toolchains", "llvm", "prebuilt", archNDK(), "bin")
 }
 
+func (tc *ndkToolchain) includePath(ndkRoot string) string {
+	return filepath.Join(ndkRoot, "toolchains", "llvm", "prebuilt", archNDK(), "sysroot", "usr", "include")
+}
+
+func (tc *ndkToolchain) libraryPath(ndkRoot string, apiLevel int) string {
+	return filepath.Join(ndkRoot, "toolchains", "llvm", "prebuilt", archNDK(), "sysroot",
+		"usr", "lib", tc.toolPrefix, strconv.Itoa(apiLevel))
+}
+
 func guessPath(dir, prefix, toolName string) (string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -211,7 +220,7 @@ func ndkRoot() (string, error) {
 	return "", fmt.Errorf("no Android NDK found in $ANDROID_HOME/ndk-bundle, $ANDROID_HOME/ndk, $NDK_HOME, $NDK_ROOT nor in $ANDROID_NDK_HOME")
 }
 
-func envInit() error {
+func envInit() (string, error) {
 	// Setup the cross-compiler environments.
 	if ndkRoot, err := ndkRoot(); err == nil {
 		androidEnv = make(map[string][]string)
@@ -229,7 +238,7 @@ func envInit() error {
 			for _, tool := range tools {
 				_, err = os.Stat(tool)
 				if err != nil {
-					return fmt.Errorf("no compiler for %s was found in the NDK (tried %s). Make sure your NDK version is >= r19c. Use `sdkmanager --update` to update it", arch, tool)
+					return "", fmt.Errorf("no compiler for %s was found in the NDK (tried %s). Make sure your NDK version is >= r19c. Use `sdkmanager --update` to update it", arch, tool)
 				}
 			}
 			androidEnv[arch] = []string{
@@ -243,14 +252,15 @@ func envInit() error {
 				androidEnv[arch] = append(androidEnv[arch], "GOARM=7")
 			}
 		}
+
+		return ndkRoot, nil
 	} else {
-		return err
+		return "", err
 	}
-	return nil
 }
 
 func Main(s string) {
-	err := envInit()
+	_, err := envInit()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
