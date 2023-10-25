@@ -231,3 +231,11 @@ func main() {
 ```
 
 我们只需要添加连接选项 `#cgo LDFLAGS: -llog` 而无须考虑头文件和库文件在文件系统中的具体位置在哪里。
+
+> gdk 具体使用方法：
+> 
+> `[386|amd64|arm|arm64] [gdk [-level <android API level>]] go ...`
+> 
+> - 其中 `gdk` 必须出现在 `386|amd64|arm|arm64` 它们任一个之后，其他 `go` 命令之前
+> - 可以使用 `-level <android API level>` 指定具体的 API level，默认为 21
+
